@@ -47,6 +47,9 @@ class Constants:
     TRANSFORMER_VARIANT = "Transformer"
     MULTIMODAL_VARIANT = "Multimodal"
 
+    LSTM_VARIANT = "lstm"
+
+
     # ----------------------- WANDB CONSTANTS -----------------------
     WANDB_PROJECT = "error_recognition"
 

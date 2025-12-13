@@ -256,6 +256,9 @@ class CaptainCookStepDataset(Dataset):
         recording_id = self._step_dict[idx][0]
         step_start_end_list = self._step_dict[idx][1]
 
+        # estraggo la categoria e la converto in frozenset (hashable)
+        error_category_labels = frozenset(step_start_end_list[0][3])
+
         step_features = None
         step_labels = None
         
@@ -265,15 +268,15 @@ class CaptainCookStepDataset(Dataset):
         assert step_features is not None, f"Features not found for recording_id: {recording_id}"
         assert step_labels is not None, f"Labels not found for recording_id: {recording_id}"
 
-        return step_features, step_labels
+        return step_features, step_labels, error_category_labels
 
 
 def collate_fn(batch):
     # batch is a list of tuples, and each tuple is (step_features, step_labels)
-    step_features, step_labels = zip(*batch)
+    step_features, step_labels, error_categories = zip(*batch)
 
     # Stack the step_features and step_labels
     step_features = torch.cat(step_features, dim=0)
     step_labels = torch.cat(step_labels, dim=0)
 
-    return step_features, step_labels
+    return step_features, step_labels, error_categories

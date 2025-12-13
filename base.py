@@ -19,6 +19,7 @@ from core.models.er_former import ErFormer
 from dataloader.CaptainCookStepDataset import collate_fn, CaptainCookStepDataset
 from dataloader.CaptainCookSubStepDataset import CaptainCookSubStepDataset
 
+from core.models.er_lstm import ErLSTM
 
 def fetch_model_name(config):
     if config.task_name == const.ERROR_CATEGORY_RECOGNITION:
@@ -50,6 +51,9 @@ def fetch_model(config):
     elif config.variant == const.TRANSFORMER_VARIANT:
         if config.backbone in [const.OMNIVORE, const.RESNET3D, const.X3D, const.SLOWFAST, const.IMAGEBIND]:
             model = ErFormer(config)
+    elif config.variant == const.LSTM_VARIANT:
+        if config.backbone in [const.OMNIVORE, const.RESNET3D, const.X3D, const.SLOWFAST, const.IMAGEBIND]:
+            model = ErLSTM(config)
 
     assert model is not None, f"Model not found for variant: {config.variant} and backbone: {config.backbone}"
     model.to(config.device)
@@ -331,10 +335,11 @@ def test_er_model(model, test_loader, criterion, device, phase, step_normalizati
     test_losses = []
 
     test_step_start_end_list = []
+    test_error_categories = []
     counter = 0
 
     with torch.no_grad():
-        for data, target in test_loader:
+        for data, target, error_categories in test_loader:
             data, target = data.to(device), target.to(device)
             output = model(data)
             total_samples += data.shape[0]
@@ -346,6 +351,7 @@ def test_er_model(model, test_loader, criterion, device, phase, step_normalizati
             all_targets.append(target.detach().cpu().numpy().reshape(-1))
 
             test_step_start_end_list.append((counter, counter + data.shape[0]))
+            test_error_categories.extend(error_categories)
             counter += data.shape[0]
 
             # Set the description of the tqdm instance to show the loss
@@ -384,38 +390,71 @@ def test_er_model(model, test_loader, criterion, device, phase, step_normalizati
     all_step_targets = []
     all_step_outputs = []
 
-    # threshold_outputs = all_outputs / max_probability
+    # dizionario per le metriche per categoria
+    metrics_per_category = {}
+    all_categories = set()
 
-    for start, end in test_step_start_end_list:
+    # Prima pass: identifica tutte le categorie
+    for i, (start, end) in enumerate(test_step_start_end_list):
+        error_category = test_error_categories[i]
+        all_categories.update(error_category)
+    
+    # Inizializza il dizionario per tutte le categorie
+    for cat in all_categories:
+        metrics_per_category[cat] = {'outputs': [], 'targets': []}
+
+    # Seconda pass: aggrega i dati per categoria
+    for i, (start, end) in enumerate(test_step_start_end_list):
         step_output = all_outputs[start:end]
         step_target = all_targets[start:end]
+        error_category = test_error_categories[i]
 
-        # sorted_step_output = np.sort(step_output)
-        # # Top 50% of the predictions
-        # threshold = np.percentile(sorted_step_output, 50)
-        # step_output = step_output[step_output > threshold]
-
-        # pos_output = step_output[step_output > 0.5]
-        # neg_output = step_output[step_output <= 0.5]
-        #
-        # if len(pos_output) > len(neg_output):
-        #     step_output = pos_output
-        # else:
-        #     step_output = neg_output
         step_output = np.array(step_output)
         # # Scale the output to [0, 1]
         if start - end > 1:
             if sub_step_normalization:
                 prob_range = np.max(step_output) - np.min(step_output)
-                step_output = (step_output - np.min(step_output)) / prob_range
+                if prob_range > 0:  # Evita divisione per zero
+                    step_output = (step_output - np.min(step_output)) / prob_range
 
         mean_step_output = np.mean(step_output)
-        step_target = 1 if np.mean(step_target) > 0.95 else 0
+        step_target_binary = 1 if np.mean(step_target) > 0.95 else 0
+
+        # Per OGNI categoria (non solo quelle presenti):
+        # target = 1 se la categoria è presente, 0 altrimenti
+        for cat in all_categories:
+            has_category = 1 if cat in error_category else 0
+            metrics_per_category[cat]['outputs'].append(mean_step_output)
+            metrics_per_category[cat]['targets'].append(has_category)
 
         all_step_outputs.append(mean_step_output)
-        all_step_targets.append(step_target)
+        all_step_targets.append(step_target_binary)
 
     all_step_outputs = np.array(all_step_outputs)
+
+    # calcolo metriche per categoria di errore
+    category_metrics = {}
+    for category, data in metrics_per_category.items():
+        category_outputs = np.array(data['outputs'])
+        category_targets = np.array(data['targets'])
+
+        pred_labels = (category_outputs > threshold).astype(int)
+        precision = precision_score(category_targets, pred_labels, zero_division=0)
+        recall = recall_score(category_targets, pred_labels)
+        f1 = f1_score(category_targets, pred_labels)
+        accuracy = accuracy_score(category_targets, pred_labels)
+
+        auc = roc_auc_score(category_targets, category_outputs)
+        pr_auc = binary_auprc(torch.tensor(pred_labels), torch.tensor(category_targets))
+
+        category_metrics[category] = {
+            const.PRECISION: precision,
+            const.RECALL: recall,
+            const.F1: f1,
+            const.ACCURACY: accuracy,
+            const.AUC: auc,
+            const.PR_AUC: pr_auc
+        }
 
     # # Scale the output to [0, 1]
     if step_normalization:
@@ -447,6 +486,7 @@ def test_er_model(model, test_loader, criterion, device, phase, step_normalizati
     print("----------------------------------------------------------------")
     print(f'{phase} Sub Step Level Metrics: {sub_step_metrics}')
     print(f"{phase} Step Level Metrics: {step_metrics}")
+    print(f"{phase} Step Level Metrics per Category: {category_metrics}")
     print("----------------------------------------------------------------")
 
     return test_losses, sub_step_metrics, step_metrics
