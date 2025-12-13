@@ -6,7 +6,8 @@ from core.models.blocks import fetch_input_dim, MLP
 
 class ErLSTM(nn.Module):
     """
-    LSTM-based baseline for SupervisedER (Step-level)
+    LSTM-based baseline per Step-level Error Recognition.
+    Restituisce un output per ogni step della sequenza.
     """
 
     def __init__(self, config, *args, **kwargs):
@@ -23,15 +24,20 @@ class ErLSTM(nn.Module):
             bidirectional=True
         )
 
-        lstm_out_dim = 256 * 2  # because bidirectional
+        lstm_out_dim = 256 * 2  # bidirezionale
 
+        # Decoder applicato ad ogni step
         self.decoder = MLP(lstm_out_dim, 512, 1)
 
     def forward(self, input_data):
         """
-        input_data: (B, T, D) where B is batch size, T is sequence length, D is feature dimension
+        input_data: (B, T, D)
+            B = batch size
+            T = lunghezza sequenza
+            D = dimensione features
+        output: (B, T, 1)
         """
-
+        # Gestione NaN e infiniti
         input_data = torch.nan_to_num(
             input_data,
             nan=0.0,
@@ -39,11 +45,10 @@ class ErLSTM(nn.Module):
             neginf=-1.0
         )
 
-        lstm_out, (h_n, _) = self.lstm(input_data)
+        # LSTM: lstm_out -> (B, T, H*2)
+        lstm_out, _ = self.lstm(input_data)
 
-        h_last = torch.cat((h_n[-2], h_n[-1]), dim=1)
-
-        final_output = self.decoder(h_last)
+        # Decoder applicato ad ogni step
+        final_output = self.decoder(lstm_out)  # (B, T, 1)
 
         return final_output
-
