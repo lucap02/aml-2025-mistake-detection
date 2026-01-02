@@ -56,3 +56,5 @@ data/
 ```
 
 altrimenti assicuratevi in qualche modo di sistemare le feature secondo questa struttura, altrimenti non partirà l'evaluation.
+### NOTA
+Assicuratevi che i percorsi nel file [config.py](./core/config.py) siano corretti, in particolare le voci *self.segment_features_directory* e *self.ckpt_directory* 

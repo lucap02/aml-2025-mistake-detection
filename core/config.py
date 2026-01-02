@@ -15,9 +15,9 @@ class Config(object):
         self.segment_length = 1
 
         # Use this for 1 sec video features
-        self.segment_features_directory = "data/"
+        self.segment_features_directory = "/content/data"
 
-        self.ckpt_directory = "/data/rohith/captain_cook/checkpoints/"
+        self.ckpt_directory = "/content/code/checkpoints"
         self.split = "recordings"
         self.batch_size = 1
         self.test_batch_size = 1
