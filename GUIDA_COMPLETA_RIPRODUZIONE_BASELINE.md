@@ -825,113 +825,21 @@ python -c "import json; print(json.load(open('er_annotations/recordings_combined
 python -c "import numpy as np; print(np.load('data/video/omnivore/recording_1_360p.mp4_1s_1s.npz')['arr_0'].shape)"
 ```
 
----
+## 10. Riferimenti
 
-## 10. Checklist Riproduzione Risultati
-
-- [ ] **Setup Ambiente**
-  - [ ] Ambiente virtuale creato
-  - [ ] Dipendenze installate (`requirements.txt`)
-  - [ ] GPU disponibile (opzionale ma consigliato)
-
-- [ ] **Download Dati**
-  - [ ] Feature scaricate da Box
-  - [ ] Checkpoint pre-addestrati scaricati
-  - [ ] Annotazioni presenti in `er_annotations/`
-
-- [ ] **Organizzazione Feature**
-  - [ ] Script `setup_features_colab.py` eseguito
-  - [ ] Verificata presenza file in `data/video/omnivore/`
-  - [ ] Verificata presenza file in `data/video/slowfast/`
-
-- [ ] **Esecuzione Valutazione V1 (MLP)**
-  - [ ] Split: step, threshold 0.6
-  - [ ] Split: recordings, threshold 0.4
-  - [ ] Risultati salvati in `results/`
-
-- [ ] **Esecuzione Valutazione V2 (Transformer)**
-  - [ ] Split: step, threshold 0.6
-  - [ ] Split: recordings, threshold 0.4
-  - [ ] Risultati salvati in `results/`
-
-- [ ] **Confronto con Paper**
-  - [ ] F1 e AUC entro ±2% dai valori del paper
-  - [ ] Metriche salvate in CSV
-
-- [ ] **(Opzionale) Training da Zero**
-  - [ ] MLP addestrato per 50 epoche
-  - [ ] Transformer addestrato per 50 epoche
-  - [ ] Checkpoint salvati in `checkpoints/`
-
----
-
-## 11. Riferimenti
-
-### 11.1 Paper Originale
+### 10.1 Paper Originale
 **CaptainCook4D: A Multi-View Video Dataset for 4D Understanding of Cooking Activity**
 - Authors: Rohith Peddi, et al.
 - Conference: CVPR 2024
 - Link: [arXiv](https://arxiv.org/abs/2312.14383)
 
-### 11.2 Repository Ufficiale
+### 10.2 Repository Ufficiale
 - **Error Recognition**: https://github.com/CaptainCook4D/error_recognition
 - **Feature Extractors**: https://github.com/CaptainCook4D/feature_extractors
 
-### 11.3 Risorse Aggiuntive
+### 10.3 Risorse Aggiuntive
 - **Omnivore Model**: https://github.com/facebookresearch/omnivore
 - **SlowFast Networks**: https://github.com/facebookresearch/SlowFast
-
----
-
-## 12. Appendice: Struttura JSON Annotazioni
-
-### 12.1 `step_annotations.json`
-```json
-{
-  "recording_1": {
-    "steps": [
-      {
-        "step_id": "step_1",
-        "start_time": 10.5,
-        "end_time": 25.3,
-        "has_errors": true
-      },
-      ...
-    ]
-  }
-}
-```
-
-### 12.2 `error_annotations.json`
-```json
-[
-  {
-    "recording_id": "recording_1",
-    "step_annotations": [
-      {
-        "step_id": "step_1",
-        "errors": [
-          {
-            "tag": "TechniqueError",
-            "description": "Wrong cutting technique"
-          }
-        ]
-      }
-    ]
-  }
-]
-```
-
-### 12.3 `recordings_combined_splits.json`
-```json
-{
-  "train": ["recording_1", "recording_2", ...],
-  "val": ["recording_50", "recording_51", ...],
-  "test": ["recording_80", "recording_81", ...]
-}
-```
-
----
 
 **Fine della Guida**
 
