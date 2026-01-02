@@ -37,3 +37,22 @@ This project builds on many repositories from the CaptainCook4D release. Please 
 **Error Recognition**: https://github.com/CaptainCook4D/error_recognition
 
 **Features Extraction**: https://github.com/CaptainCook4D/feature_extractors
+
+Struttura:
+scaricate le feature, io ho un file feature.zip al cui interno ci sono i file omnivore.zip e slowfast.zip, che contengono a loro volta tutte le rispettive feature. Se avete anche voi una struttura di questo tipo, vi basta eseguire lo script setup_features_colab.py e le sistemerà come segue:
+
+```
+data/
+├── video/
+│   ├── omnivore/
+│   │   ├── {recording_id}_360p.mp4_1s_1s.npz  # Feature video 1s per Omnivore
+│   │   └── ...
+│   └── slowfast/
+│       ├── {recording_id}_360p.mp4_1s_1s.npz  # Feature video 1s per SlowFast
+│       └── ...
+└── audio/
+    ├── {recording_id}_audio.npz
+    └── ...
+```
+
+altrimenti assicuratevi in qualche modo di sistemare le feature secondo questa struttura, altrimenti non partirà l'evaluation.
