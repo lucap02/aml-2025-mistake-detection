@@ -169,3 +169,6 @@ error_recognition_best
 
 results
 .vscode
+
+*.zip
+checkpoints_lstm
