@@ -1,3 +1,10 @@
+##############################
+# COPIARE E INCOLLARE QUESTO #
+# SCRIPT IN UNA CELLA        #
+# DI COLAB PER SETUP         #
+# DELLE FEATURES             #   
+##############################
+
 import os
 import shutil
 import zipfile
@@ -5,7 +12,6 @@ from pathlib import Path
 from typing import List
 
 from tqdm import tqdm
-
 
 def mount_google_drive() -> bool:
     try:
@@ -105,7 +111,7 @@ def main():
         raise FileNotFoundError(f"Zip not found at {outer_zip}")
 
     temp_root = Path("./features_temp")
-    target_root = Path("code/data") # Changed this line to ensure data is placed in /content/code/data
+    target_root = Path("/content/code/data") # Direct extraction to /content/code/data
 
     # Step 1: Extract outer zip
     extract_zip(str(outer_zip), str(temp_root))
