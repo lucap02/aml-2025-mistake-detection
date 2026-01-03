@@ -67,18 +67,27 @@ def convert_and_round(value):
     return np.round(value, 2)
 
 
-def collate_stats(config, sub_step_metrics, step_metrics):
+def collate_stats(config, sub_step_metrics, step_metrics, category_metrics=None):
     collated_stats = [config.split, config.backbone, config.variant, config.modality]
     for metric in [const.PRECISION, const.RECALL, const.F1, const.ACCURACY, const.AUC, const.PR_AUC]:
         collated_stats.append(convert_and_round(sub_step_metrics[metric]))
     for metric in [const.PRECISION, const.RECALL, const.F1, const.ACCURACY, const.AUC, const.PR_AUC]:
         # Round to two digits before appending
         collated_stats.append(convert_and_round(step_metrics[metric]))
+    
+    # Aggiungi metriche per categoria di errore (se disponibili)
+    if category_metrics is not None:
+        # Ordina le categorie per consistenza
+        for category in sorted(category_metrics.keys()):
+            cat_metrics = category_metrics[category]
+            for metric in [const.PRECISION, const.RECALL, const.F1, const.ACCURACY, const.AUC, const.PR_AUC]:
+                collated_stats.append(convert_and_round(cat_metrics[metric]))
+    
     return collated_stats
 
 
 def save_results_to_csv(config, sub_step_metrics, step_metrics, step_normalization=False, sub_step_normalization=False,
-                        threshold=0.5):
+                        threshold=0.5, category_metrics=None):
     results_dir = os.path.join(os.getcwd(), const.RESULTS)
     task_results_dir = os.path.join(results_dir, config.task_name, "combined_results")
     os.makedirs(task_results_dir, exist_ok=True)
@@ -86,26 +95,36 @@ def save_results_to_csv(config, sub_step_metrics, step_metrics, step_normalizati
 
     results_file_path = os.path.join(task_results_dir,
                                      f'step_{step_normalization}_substep_{sub_step_normalization}_threshold_{threshold}.csv')
-    collated_stats = collate_stats(config, sub_step_metrics, step_metrics)
+    collated_stats = collate_stats(config, sub_step_metrics, step_metrics, category_metrics)
 
     file_exist = os.path.isfile(results_file_path)
 
     with open(results_file_path, "a", newline='') as activity_idx_step_idx_annotation_csv_file:
         writer = csv.writer(activity_idx_step_idx_annotation_csv_file, quoting=csv.QUOTE_NONNUMERIC)
         if not file_exist:
-            writer.writerow([
+            header = [
                 "Split", "Backbone", "Variant", "Modality",
                 "Sub-Step Precision", "Sub-Step Recall", "Sub-Step F1", "Sub-Step Accuracy", "Sub-Step AUC",
                 "Sub-Step PR AUC",
                 "Step Precision", "Step Recall", "Step F1", "Step Accuracy", "Step AUC", "Step PR AUC"
-            ])
+            ]
+            
+            # Aggiungi header per categorie di errore (se disponibili)
+            if category_metrics is not None:
+                for category in sorted(category_metrics.keys()):
+                    header.extend([
+                        f"{category} Precision", f"{category} Recall", f"{category} F1", 
+                        f"{category} Accuracy", f"{category} AUC", f"{category} PR AUC"
+                    ])
+            
+            writer.writerow(header)
         writer.writerow(collated_stats)
 
 
 def save_results(config, sub_step_metrics, step_metrics, step_normalization=False, sub_step_normalization=False,
-                 threshold=0.5):
+                 threshold=0.5, category_metrics=None):
     # 1. Save evaluation results to csv
-    save_results_to_csv(config, sub_step_metrics, step_metrics, step_normalization, sub_step_normalization, threshold)
+    save_results_to_csv(config, sub_step_metrics, step_metrics, step_normalization, sub_step_normalization, threshold, category_metrics)
 
 
 def store_model(model, config, ckpt_name: str):
@@ -210,12 +229,12 @@ def train_model_base(train_loader, val_loader, config, test_loader=None):
                     f'Train Epoch: {epoch}, Progress: {batch_idx}/{num_batches}, Loss: {loss.item():.6f}'
                 )
 
-            val_losses, sub_step_metrics, step_metrics = test_er_model(model, val_loader, criterion, device, phase='val')
+            val_losses, sub_step_metrics, step_metrics, val_category_metrics = test_er_model(model, val_loader, criterion, device, phase='val')
 
             scheduler.step(step_metrics[const.AUC])
 
             if test_loader is not None:
-                test_losses, test_sub_step_metrics, test_step_metrics = test_er_model(model, test_loader, criterion,
+                test_losses, test_sub_step_metrics, test_step_metrics, test_category_metrics = test_er_model(model, test_loader, criterion,
                                                                                       device, phase='test')
 
             avg_train_loss = sum(train_losses) / len(train_losses)
@@ -245,6 +264,15 @@ def train_model_base(train_loader, val_loader, config, test_loader=None):
                     "sub_step_metrics": test_sub_step_metrics
                 }
             }
+            
+            # Aggiungi metriche per categoria con flatten names
+            for category, cat_metrics in val_category_metrics.items():
+                for metric_name, metric_value in cat_metrics.items():
+                    running_metrics[f"val/{category}/{metric_name}"] = metric_value
+            
+            for category, cat_metrics in test_category_metrics.items():
+                for metric_name, metric_value in cat_metrics.items():
+                    running_metrics[f"test/{category}/{metric_name}"] = metric_value
 
             if config.enable_wandb:
                 wandb.log(running_metrics)
@@ -489,4 +517,4 @@ def test_er_model(model, test_loader, criterion, device, phase, step_normalizati
     print(f"{phase} Step Level Metrics per Category: {category_metrics}")
     print("----------------------------------------------------------------")
 
-    return test_losses, sub_step_metrics, step_metrics
+    return test_losses, sub_step_metrics, step_metrics, category_metrics
