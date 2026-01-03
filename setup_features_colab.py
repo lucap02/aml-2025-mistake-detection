@@ -1,9 +1,3 @@
-"""Setup features on Google Colab.
-- Mounts Google Drive (if available)
-- Extracts features.zip that contains nested omnivore.zip / slowfast.zip (and any other *.zip)
-- Moves .npz files into data/video/{omnivore,slowfast} and data/audio
-"""
-
 import os
 import shutil
 import zipfile
@@ -111,7 +105,7 @@ def main():
         raise FileNotFoundError(f"Zip not found at {outer_zip}")
 
     temp_root = Path("./features_temp")
-    target_root = Path("./data")
+    target_root = Path("code/data") # Changed this line to ensure data is placed in /content/code/data
 
     # Step 1: Extract outer zip
     extract_zip(str(outer_zip), str(temp_root))
